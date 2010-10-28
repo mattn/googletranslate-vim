@@ -42,7 +42,6 @@ endfunction
 function! GoogleTranslate(word, ...)
   let mode = a:0 >= 2 ? a:2 : s:CheckEorJ(a:word)
   let @a= mode
-  " Makeup query data chunk
   let res = http#post(s:endpoint, {"v": "1.0", "langpair": mode, "q": a:word})
   let str = iconv(res.content, "utf-8", &encoding)
   let str = substitute(str, '\\u\(\x\x\x\x\)', '\=s:nr2enc_char("0x".submatch(1))', 'g')
