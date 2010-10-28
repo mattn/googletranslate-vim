@@ -43,14 +43,20 @@ function! GoogleTranslate(word, ...)
   let mode = a:0 >= 2 ? a:2 : s:CheckEorJ(a:word)
   let @a= mode
   let res = http#post(s:endpoint, {"v": "1.0", "langpair": mode, "q": a:word})
-  let str = iconv(res.content, "utf-8", &encoding)
-  let str = substitute(str, '\\u\(\x\x\x\x\)', '\=s:nr2enc_char("0x".submatch(1))', 'g')
-  let str = substitute(str, '^window\.google\.ac\.h', '', '')
-  let l:null = 0
-  let l:true = 1
-  let l:false = 0
-  let obj = eval(str)
-  return obj.responseData.translatedText
+  let text = iconv(res.content, "utf-8", &encoding)
+  let text = substitute(text, '\\u\(\x\x\x\x\)', '\=s:nr2enc_char("0x".submatch(1))', 'g')
+  let [null,true,false] = [0,1,0]
+  let obj = eval(text)
+  let text = obj.responseData.translatedText
+  let text = substitute(text, '&gt;', '>', 'g')
+  let text = substitute(text, '&lt;', '<', 'g')
+  let text = substitute(text, '&quot;', '"', 'g')
+  let text = substitute(text, '&apos;', "'", 'g')
+  let text = substitute(text, '&nbsp;', ' ', 'g')
+  let text = substitute(text, '&yen;', '\&#65509;', 'g')
+  let text = substitute(text, '&#\(\d\+\);', '\=s:nr2enc_char(submatch(1))', 'g')
+  let text = substitute(text, '&amp;', '\&', 'g')
+  return text
 endfunction
 
 function! GoogleTranslateRange() range
