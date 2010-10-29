@@ -4,7 +4,7 @@
 "
 " Author:	Yasuhiro Matsumoto <mattn.jp@gmail.com>
 " Based On:     excitetranslate.vim
-" Last Change:	28-Oct-2010.
+" Last Change:	29-Oct-2010.
 
 if !exists('g:googletranslate_options')
   let g:googletranslate_options = ["register","buffer"]
@@ -47,15 +47,19 @@ function! GoogleTranslate(word, ...)
   let text = substitute(text, '\\u\(\x\x\x\x\)', '\=s:nr2enc_char("0x".submatch(1))', 'g')
   let [null,true,false] = [0,1,0]
   let obj = eval(text)
-  let text = obj.responseData.translatedText
-  let text = substitute(text, '&gt;', '>', 'g')
-  let text = substitute(text, '&lt;', '<', 'g')
-  let text = substitute(text, '&quot;', '"', 'g')
-  let text = substitute(text, '&apos;', "'", 'g')
-  let text = substitute(text, '&nbsp;', ' ', 'g')
-  let text = substitute(text, '&yen;', '\&#65509;', 'g')
-  let text = substitute(text, '&#\(\d\+\);', '\=s:nr2enc_char(submatch(1))', 'g')
-  let text = substitute(text, '&amp;', '\&', 'g')
+  if type(obj.responseData) == 4
+    let text = obj.responseData.translatedText
+    let text = substitute(text, '&gt;', '>', 'g')
+    let text = substitute(text, '&lt;', '<', 'g')
+    let text = substitute(text, '&quot;', '"', 'g')
+    let text = substitute(text, '&apos;', "'", 'g')
+    let text = substitute(text, '&nbsp;', ' ', 'g')
+    let text = substitute(text, '&yen;', '\&#65509;', 'g')
+    let text = substitute(text, '&#\(\d\+\);', '\=s:nr2enc_char(submatch(1))', 'g')
+    let text = substitute(text, '&amp;', '\&', 'g')
+  else
+    let text = ''
+  endif
   return text
 endfunction
 
