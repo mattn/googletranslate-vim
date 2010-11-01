@@ -1,6 +1,8 @@
 " vim:set ts=8 sts=2 sw=2 tw=0:
 "
-" googletranslate.vim - Translate between English and Japanese using Google
+" googletranslate.vim - Translate between English and Japanese/Chinese
+" using Google
+" @see [http://code.google.com/apis/ajaxlanguage/ Google AJAX Language API]
 "
 " Author:	Yasuhiro Matsumoto <mattn.jp@gmail.com>
 " Based On:     excitetranslate.vim
@@ -42,8 +44,15 @@ endfunction
 function! GoogleTranslate(word, ...)
   let mode = a:0 >= 2 ? a:2 : s:CheckEorJ(a:word)
   let @a= mode
-  let res = http#post(s:endpoint, {"v": "1.0", "langpair": mode, "q": a:word})
-  let text = iconv(res.content, "utf-8", &encoding)
+  if executable("curl")
+    setlocal shellredir=>
+    let text = system('curl -d "v=1.0&langpair='.mode.'&q='.a:word.'" ' . s:endpoint)
+    setlocal shellredir&
+  else
+    let res = http#post(s:endpoint, {"v": "1.0", "langpair": mode, "q": a:word})
+    let text = res.content
+  endif
+  let text = iconv(text, "utf-8", &encoding)
   let text = substitute(text, '\\u\(\x\x\x\x\)', '\=s:nr2enc_char("0x".submatch(1))', 'g')
   let [null,true,false] = [0,1,0]
   let obj = eval(text)
@@ -81,10 +90,10 @@ function! GoogleTranslateRange() range
   " Put to buffer.
   if index(g:googletranslate_options, 'buffer') != -1
     " Open or go result buffer.
-    let bufname = '==Translate== Google'
+    let bufname = '==Google Translate=='
     let winnr = bufwinnr(bufname)
     if winnr < 1
-      execute 'below new '.escape(bufname, ' ')
+      execute 'below 10new '.escape(bufname, ' ')
     else
       if winnr != winnr()
 	execute winnr.'wincmd w'
