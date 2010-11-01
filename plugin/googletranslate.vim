@@ -1,6 +1,6 @@
 " vim:set ts=8 sts=2 sw=2 tw=0:
 "
-" googletranslate.vim - Translate between English and Japanese/Chinese
+" googletranslate.vim - Translate between English and Locale Language.
 " using Google
 " @see [http://code.google.com/apis/ajaxlanguage/ Google AJAX Language API]
 "
@@ -11,13 +11,17 @@
 if !exists('g:googletranslate_options')
   let g:googletranslate_options = ["register","buffer"]
 endif
+" default language setting.
+if !exists('g:googletranslate_locale')
+  let g:googletranslate_locale = substitute(strpart(v:lang, 0, stridx(v:lang, ".")), "_", "-", "g")
+endif
 
 let s:endpoint = 'http://ajax.googleapis.com/ajax/services/language/translate'
 
-function! s:CheckEorJ(word)
+function! s:CheckLang(word)
   let all = strlen(a:word)
   let eng = strlen(substitute(a:word, '[^\t -~]', '', 'g'))
-  return eng * 2 < all ? 'ja|en' : 'en|ja'
+  return eng * 2 < all ? g:googletranslate_locale.'|en' : 'en|'.g:googletranslate_locale
 endfunction
 
 function! s:nr2byte(nr)
@@ -41,12 +45,32 @@ function! s:nr2enc_char(charcode)
   return char
 endfunction
 
-function! GoogleTranslate(word, ...)
-  let mode = a:0 >= 2 ? a:2 : s:CheckEorJ(a:word)
-  let @a= mode
+" @see http://vim.g.hatena.ne.jp/eclipse-a/20080707/1215395816
+function! s:char2hex(c)
+  if a:c =~# '^[:cntrl:]$' | return '' | endif
+  let r = ''
+  for i in range(strlen(a:c))
+    let r .= printf('%%%02X', char2nr(a:c[i]))
+  endfor
+  return r
+endfunction
+function! s:encodeURI(s)
+  return substitute(a:s, '[^0-9A-Za-z-._~!''()*#$&+,/:;=?@]',
+        \ '\=s:char2hex(submatch(0))', 'g')
+endfunction
+function! s:encodeURIComponent(s)
+  return substitute(a:s, '[^0-9A-Za-z-._~!''()*]',
+        \ '\=s:char2hex(submatch(0))', 'g')
+endfunction
+
+
+function! GoogleTranslate(word, langpair)
+  let mode = a:0 >= 2 ? a:2 : s:CheckLang(a:word)
+  "let mode = a:langpair
+  "let @a= mode
   if executable("curl")
     setlocal shellredir=>
-    let text = system('curl -d "v=1.0&langpair='.mode.'&q='.a:word.'" ' . s:endpoint)
+    let text = system('curl -d "v=1.0&langpair='.mode.'&q='.s:encodeURIComponent(a:word).'" ' . s:endpoint)
     setlocal shellredir&
   else
     let res = http#post(s:endpoint, {"v": "1.0", "langpair": mode, "q": a:word})
@@ -72,21 +96,33 @@ function! GoogleTranslate(word, ...)
   return text
 endfunction
 
-function! GoogleTranslateRange() range
+function! GoogleTranslateRange(...) range
   " Concatenate input string.
   let curline = a:firstline
   let strline = ''
-  while curline <= a:lastline
-    let tmpline = substitute(getline(curline), '^\s\+\|\s\+$', '', 'g')
-    if tmpline=~ '\m^\a' && strline =~ '\m\a$'
-      let strline = strline .' '. tmpline
-    else
-      let strline = strline . tmpline
-    endif
-    let curline = curline + 1
-  endwhile
+  if a:0 == 0
+    let langpair = '|'.g:googletranslate_locale
+  elseif a:0 == 1
+    let langpair = '|'.a:1
+  elseif a:0 >= 2
+    let langpair = a:1.'|'.a:2
+  endif
+
+  if a:0 >= 3
+    let strline = a:3
+  else
+    while curline <= a:lastline
+      let tmpline = substitute(getline(curline), '^\s\+\|\s\+$', '', 'g')
+      if tmpline=~ '\m^\a' && strline =~ '\m\a$'
+        let strline = strline .' '. tmpline
+      else
+        let strline = strline . tmpline
+      endif
+      let curline = curline + 1
+    endwhile
+  endif
   " Do translate.
-  let jstr = GoogleTranslate(strline)
+  let jstr = GoogleTranslate(strline, langpair)
   " Put to buffer.
   if index(g:googletranslate_options, 'buffer') != -1
     " Open or go result buffer.
@@ -115,4 +151,5 @@ function! GoogleTranslateRange() range
   endif
 endfunction
 
-command! -nargs=0 -range GoogleTranslate <line1>,<line2>call GoogleTranslateRange()
+command! -nargs=* -range GoogleTranslate <line1>,<line2>call GoogleTranslateRange(<f-args>)
+command! -nargs=* -range Trans <line1>,<line2>call GoogleTranslateRange(<f-args>)
