@@ -4,7 +4,6 @@
   Translate text using Google Translate API.
 
 ### Usage
-
     :GoogleTranslate
   translate current line.
 
@@ -24,7 +23,6 @@
   alias for :GoogleTranslate
 
 ### See Also
-
   - <http://www.vim.org/scripts/script.php?script_id=2609>
   - <http://www.vim.org/scripts/script.php?script_id=2996>
   - <http://oracleabc.com/b/archives/665>
