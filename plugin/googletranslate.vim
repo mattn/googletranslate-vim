@@ -5,15 +5,16 @@
 " @see [http://code.google.com/apis/ajaxlanguage/ Google AJAX Language API]
 "
 " Author:	Yasuhiro Matsumoto <mattn.jp@gmail.com>
+" Contribute:	hotoo (闲耘™)
 " Based On:     excitetranslate.vim
-" Last Change:	29-Oct-2010.
+" Last Change:	11-Nov-2010.
 
 if !exists('g:googletranslate_options')
   let g:googletranslate_options = ["register","buffer"]
 endif
 " default language setting.
 if !exists('g:googletranslate_locale')
-  let g:googletranslate_locale = substitute(strpart(v:lang, 0, stridx(v:lang, ".")), "_", "-", "g")
+  let g:googletranslate_locale = substitute(v:lang, '^\([a-z]*\).*$', '\1', '')
 endif
 
 let s:endpoint = 'http://ajax.googleapis.com/ajax/services/language/translate'
@@ -63,18 +64,18 @@ function! s:encodeURIComponent(s)
         \ '\=s:char2hex(submatch(0))', 'g')
 endfunction
 
-
 function! GoogleTranslate(word, from, to)
-  let mode = a:from . "|" . a:to
-  "let @a= mode
-  if executable("curl")
-    setlocal shellredir=>
-    let text = system('curl -d "v=1.0&langpair='.mode.'&q='.s:encodeURIComponent(a:word).'" ' . s:endpoint)
-    setlocal shellredir&
-  else
-    let res = http#post(s:endpoint, {"v": "1.0", "langpair": mode, "q": a:word})
-    let text = res.content
+  if !executable("curl")
+    echohl WarningMsg
+    echo "GoogleTranslate require 'curl' command."
+    echohl None
+    return
   endif
+  let mode = a:from . "|" . a:to
+  let oldshellredir=&shellredir
+  setlocal shellredir=>
+  let text = system('curl -d "v=1.0&langpair='.mode.'&q='.s:encodeURIComponent(a:word).'" ' . s:endpoint)
+  let &shellredir=oldshellredir
   let text = iconv(text, "utf-8", &encoding)
   let text = substitute(text, '\\u\(\x\x\x\x\)', '\=s:nr2enc_char("0x".submatch(1))', 'g')
   let [null,true,false] = [0,1,0]
@@ -90,6 +91,12 @@ function! GoogleTranslate(word, from, to)
     let text = substitute(text, '&#\(\d\+\);', '\=s:nr2enc_char(submatch(1))', 'g')
     let text = substitute(text, '&amp;', '\&', 'g')
   else
+    if !has_key(obj, 'responseDetails')
+      let obj.responseDetails = 'unknown server error'
+    endif
+    echohl WarningMsg
+    echo obj.responseDetails
+    echohl None
     let text = ''
   endif
   return text
@@ -128,6 +135,14 @@ function! GoogleTranslateRange(...) range
 
   " Do translate.
   let jstr = GoogleTranslate(strline, from, to)
+  if len(jstr) == 0
+    return
+  endif
+
+  " Echo
+  if index(g:googletranslate_options, 'echo') != -1
+    echo jstr
+  endif
   " Put to buffer.
   if index(g:googletranslate_options, 'buffer') != -1
     " Open or go result buffer.
