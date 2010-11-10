@@ -1,7 +1,9 @@
-# Description
+# googletranslate.vim
+
+### Description
   Translate text using Google Translate API.
 
-# Usage
+### Usage
 
     :GoogleTranslate
   translate current line.
@@ -21,7 +23,7 @@
     :Trans
   alias for :GoogleTranslate
 
-# See Also
+### See Also
 
   - http://www.vim.org/scripts/script.php?script_id=2609
   - http://www.vim.org/scripts/script.php?script_id=2996
@@ -31,6 +33,6 @@
   - :h language
   - :h v:lang
 
-# Author
+### Author
   * mattn
   * hotoo
