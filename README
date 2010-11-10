@@ -1,18 +1,31 @@
 
 = Usage =
-:GoogleTranslate
-:Trans
-:Trans ja
-:Trans zh-cn ja
-:Trans zh-cn ja 谷歌翻译
 
+    :GoogleTranslate
+  translate current line.
 
-http://www.vim.org/scripts/script.php?script_id=2609
-http://www.vim.org/scripts/script.php?script_id=2996
-http://oracleabc.com/b/archives/665
+    :'<,'>GoogleTranslate
+  translate text that blockwize visual.
 
+    :GoogleTranslate ja
+  translate current line to japanese.
 
-:h mlang.txt
-:h locale
-:h language
-:h v:lang
+    :GoogleTranslate zh-cn ja
+  translate current line from chinese to japanese.
+
+    :GoogleTranslate zh-cn ja 谷歌翻译
+  translate '谷歌翻译' from chinese to japanese.
+
+    :Trans
+  alias for :GoogleTranslate
+
+= See Also =
+
+  http://www.vim.org/scripts/script.php?script_id=2609
+  http://www.vim.org/scripts/script.php?script_id=2996
+  http://oracleabc.com/b/archives/665
+
+  :h mlang.txt
+  :h locale
+  :h language
+  :h v:lang
