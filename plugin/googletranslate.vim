@@ -1,6 +1,6 @@
 " vim:set ts=8 sts=2 sw=2 tw=0:
 "
-" googletranslate.vim - Translate between English and Locale Language.
+" googletranslate.vim - Translate between English and Locale Language
 " using Google
 " @see [http://code.google.com/apis/ajaxlanguage/ Google AJAX Language API]
 "
@@ -21,7 +21,7 @@ let s:endpoint = 'http://ajax.googleapis.com/ajax/services/language/translate'
 function! s:CheckLang(word)
   let all = strlen(a:word)
   let eng = strlen(substitute(a:word, '[^\t -~]', '', 'g'))
-  return eng * 2 < all ? g:googletranslate_locale.'|en' : 'en|'.g:googletranslate_locale
+  return eng * 2 < all ? '' : 'en'
 endfunction
 
 function! s:nr2byte(nr)
@@ -64,9 +64,8 @@ function! s:encodeURIComponent(s)
 endfunction
 
 
-function! GoogleTranslate(word, langpair)
-  let mode = a:0 >= 2 ? a:2 : s:CheckLang(a:word)
-  "let mode = a:langpair
+function! GoogleTranslate(word, from, to)
+  let mode = a:from . "|" . a:to
   "let @a= mode
   if executable("curl")
     setlocal shellredir=>
@@ -100,13 +99,6 @@ function! GoogleTranslateRange(...) range
   " Concatenate input string.
   let curline = a:firstline
   let strline = ''
-  if a:0 == 0
-    let langpair = '|'.g:googletranslate_locale
-  elseif a:0 == 1
-    let langpair = '|'.a:1
-  elseif a:0 >= 2
-    let langpair = a:1.'|'.a:2
-  endif
 
   if a:0 >= 3
     let strline = a:3
@@ -121,8 +113,21 @@ function! GoogleTranslateRange(...) range
       let curline = curline + 1
     endwhile
   endif
+
+  let from = ''
+  let to = g:googletranslate_locale
+  if a:0 == 0
+    let from = s:CheckLang(strline)
+    let to = 'en'==from ? g:googletranslate_locale : 'en'
+  elseif a:0 == 1
+    let to = a:1
+  elseif a:0 >= 2
+    let from = a:1
+    let to = a:2
+  endif
+
   " Do translate.
-  let jstr = GoogleTranslate(strline, langpair)
+  let jstr = GoogleTranslate(strline, from, to)
   " Put to buffer.
   if index(g:googletranslate_options, 'buffer') != -1
     " Open or go result buffer.
