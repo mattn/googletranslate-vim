@@ -14,7 +14,7 @@ if !exists('g:googletranslate_options')
 endif
 " default language setting.
 if !exists('g:googletranslate_locale')
-  let g:googletranslate_locale = substitute(v:lang, '^\([a-z]*\).*$', '\1', '')
+  let g:googletranslate_locale = substitute(v:lang, '^\([a-zA-Z_]*\).*$', '\1', '')
 endif
 
 let s:endpoint = 'http://ajax.googleapis.com/ajax/services/language/translate'
@@ -71,7 +71,9 @@ function! GoogleTranslate(word, from, to)
     echohl None
     return
   endif
-  let mode = a:from . "|" . a:to
+  let from = substitute(a:from, '_', '-', 'g')
+  let to = substitute(a:to, '_', '-', 'g')
+  let mode = from . "|" . to
   let oldshellredir=&shellredir
   setlocal shellredir=>
   let text = system('curl -s -d "v=1.0&langpair='.mode.'&q='.s:encodeURIComponent(a:word).'" ' . s:endpoint)
@@ -90,6 +92,7 @@ function! GoogleTranslate(word, from, to)
     let text = substitute(text, '&yen;', '\&#65509;', 'g')
     let text = substitute(text, '&#\(\d\+\);', '\=s:nr2enc_char(submatch(1))', 'g')
     let text = substitute(text, '&amp;', '\&', 'g')
+    echomsg ''==from ? obj.responseData.detectedSourceLanguage.'|'.to : mode
   else
     if !has_key(obj, 'responseDetails')
       let obj.responseDetails = 'unknown server error'
