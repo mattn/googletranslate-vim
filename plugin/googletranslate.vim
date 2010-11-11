@@ -74,7 +74,7 @@ function! GoogleTranslate(word, from, to)
   let mode = a:from . "|" . a:to
   let oldshellredir=&shellredir
   setlocal shellredir=>
-  let text = system('curl -d "v=1.0&langpair='.mode.'&q='.s:encodeURIComponent(a:word).'" ' . s:endpoint)
+  let text = system('curl -s -d "v=1.0&langpair='.mode.'&q='.s:encodeURIComponent(a:word).'" ' . s:endpoint)
   let &shellredir=oldshellredir
   let text = iconv(text, "utf-8", &encoding)
   let text = substitute(text, '\\u\(\x\x\x\x\)', '\=s:nr2enc_char("0x".submatch(1))', 'g')
@@ -149,7 +149,9 @@ function! GoogleTranslateRange(...) range
     let bufname = '==Google Translate=='
     let winnr = bufwinnr(bufname)
     if winnr < 1
-      execute 'below 10new '.escape(bufname, ' ')
+      silent execute 'below 10new '.escape(bufname, ' ')
+      nmap <buffer> q :<c-g><c-u>bw!<cr>
+      vmap <buffer> q :<c-g><c-u>bw!<cr>
     else
       if winnr != winnr()
 	execute winnr.'wincmd w'
