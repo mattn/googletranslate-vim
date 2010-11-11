@@ -18,11 +18,21 @@ if !exists('g:googletranslate_locale')
 endif
 
 let s:endpoint = 'http://ajax.googleapis.com/ajax/services/language/translate'
+let s:langMap = {
+    \ 'zh_cn' : 'zh-cn',
+    \ 'zh_tw' : 'zh-tw',
+    \ 'zh_hk' : 'zh-hk',
+    \ 'ja_jp' : 'ja'
+  \ }
 
 function! s:CheckLang(word)
   let all = strlen(a:word)
   let eng = strlen(substitute(a:word, '[^\t -~]', '', 'g'))
   return eng * 2 < all ? '' : 'en'
+endfunction
+function! s:fixLang(lang)
+  let lang = tolower(a:lang)
+  return has_key(s:langMap, lang) ? s:langMap[lang] : a:lang
 endfunction
 
 function! s:nr2byte(nr)
@@ -71,8 +81,8 @@ function! GoogleTranslate(word, from, to)
     echohl None
     return
   endif
-  let from = substitute(a:from, '_', '-', 'g')
-  let to = substitute(a:to, '_', '-', 'g')
+  let from = s:fixLang(a:from)
+  let to = s:fixLang(a:to)
   let mode = from . "|" . to
   let oldshellredir=&shellredir
   setlocal shellredir=>
