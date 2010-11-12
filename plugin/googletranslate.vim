@@ -7,32 +7,52 @@
 " Author:	Yasuhiro Matsumoto <mattn.jp@gmail.com>
 " Contribute:	hotoo (闲耘™)
 " Based On:     excitetranslate.vim
-" Last Change:	11-Nov-2010.
+" Last Change:	12-Nov-2010.
 
 if !exists('g:googletranslate_options')
   let g:googletranslate_options = ["register","buffer"]
 endif
-" default language setting.
-if !exists('g:googletranslate_locale')
-  let g:googletranslate_locale = substitute(v:lang, '^\([a-zA-Z_]*\).*$', '\1', '')
-endif
 
 let s:endpoint = 'http://ajax.googleapis.com/ajax/services/language/translate'
+let s:detectpoint = 'http://ajax.googleapis.com/ajax/services/language/detect'
 let s:langMap = {
-    \ 'zh_cn' : 'zh-cn',
-    \ 'zh_tw' : 'zh-tw',
-    \ 'zh_hk' : 'zh-hk',
+    \ 'zh_cn' : 'zh-CN',
+    \ 'zh_tw' : 'zh-TW',
+    \ 'zh_hk' : 'zh-TW',
+    \ 'zh-hk' : 'zh-TW',
     \ 'ja_jp' : 'ja'
   \ }
 
-function! s:CheckLang(word)
+function! s:fixLang(lang)
+  let lang = tolower(a:lang)
+  return has_key(s:langMap, lang) ? s:langMap[lang] : a:lang
+endfunction
+" default language setting.
+if !exists('g:googletranslate_locale')
+  let g:googletranslate_locale = s:fixLang(substitute(v:lang, '^\([a-zA-Z_]*\).*$', '\1', ''))
+endif
+
+function! s:checkLang(word)
   let all = strlen(a:word)
   let eng = strlen(substitute(a:word, '[^\t -~]', '', 'g'))
   return eng * 2 < all ? '' : 'en'
 endfunction
-function! s:fixLang(lang)
-  let lang = tolower(a:lang)
-  return has_key(s:langMap, lang) ? s:langMap[lang] : a:lang
+function! s:detectLang(word)
+  try
+    let oldshellredir=&shellredir
+    setlocal shellredir=>
+    " NOT support post for now.
+    "let text = system('curl -s -d "v=1.0&q='.s:encodeURIComponent(a:word).'" ' . s:detectpoint)
+    let text = system('curl -s "' . s:detectpoint.'?v=1.0&q='.s:encodeURIComponent(a:word).'"')
+    let &shellredir=oldshellredir
+    let text = iconv(text, "utf-8", &encoding)
+    let text = substitute(text, '\\u\(\x\x\x\x\)', '\=s:nr2enc_char("0x".submatch(1))', 'g')
+    let [null,true,false] = [0,1,0]
+    let obj = eval(text)
+    return obj.responseData.language
+  catch /.*/
+    return s:checkLang(a:word)
+  endtry
 endfunction
 
 function! s:nr2byte(nr)
@@ -137,8 +157,8 @@ function! GoogleTranslateRange(...) range
   let from = ''
   let to = g:googletranslate_locale
   if a:0 == 0
-    let from = s:CheckLang(strline)
-    let to = 'en'==from ? g:googletranslate_locale : 'en'
+    let from = s:detectLang(strline)
+    let to = g:googletranslate_locale==?from || ''==from ? 'en' : g:googletranslate_locale
   elseif a:0 == 1
     let to = a:1
   elseif a:0 >= 2
