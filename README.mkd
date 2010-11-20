@@ -22,6 +22,16 @@
     :Trans
   alias for :GoogleTranslate
 
+    :GoogleTranslateBalloon on
+  set balloon on, and translate when mouse hover.
+
+    :GoogleTranslateBalloon off
+  set balloon off.
+
+    <leader>gt
+  TODO: make output area.
+  translate current visual-inline selection range.
+
 ### See Also
   - <http://www.vim.org/scripts/script.php?script_id=2609>
   - <http://www.vim.org/scripts/script.php?script_id=2996>
