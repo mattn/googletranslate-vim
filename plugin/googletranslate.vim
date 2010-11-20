@@ -12,6 +12,9 @@
 if !exists('g:googletranslate_options')
   let g:googletranslate_options = ["register","buffer"]
 endif
+if !exists("g:googletranslate_balloon")
+  let g:googletranslate_balloon = 0
+endif
 
 let s:endpoint = 'http://ajax.googleapis.com/ajax/services/language/translate'
 let s:detectpoint = 'http://ajax.googleapis.com/ajax/services/language/detect'
@@ -22,7 +25,16 @@ let s:langMap = {
     \ 'zh-hk' : 'zh-TW',
     \ 'ja_jp' : 'ja'
   \ }
+let s:localMap = {
+      \ 'zh-CN' : 'gb2312',
+      \ 'zh-TW' : 'gbk',
+      \ 'ja' : 'JIS'
+      \}
 
+function! s:getLocal()
+  let k = g:googletranslate_locale
+  return has_key(s:localMap, k) ? s:localMap[k] : "utf-8"
+endfunction
 function! s:fixLang(lang)
   let lang = tolower(a:lang)
   return has_key(s:langMap, lang) ? s:langMap[lang] : a:lang
@@ -94,16 +106,32 @@ function! s:encodeURIComponent(s)
         \ '\=s:char2hex(submatch(0))', 'g')
 endfunction
 
-function! GoogleTranslate(word, from, to)
+function! GoogleTranslate(word, ...)
+  if a:word==""
+    return ""
+  endif
   if !executable("curl")
     echohl WarningMsg
     echo "GoogleTranslate require 'curl' command."
     echohl None
-    return
+    return ""
   endif
-  let from = s:fixLang(a:from)
-  let to = s:fixLang(a:to)
+
+  let from = ''
+  let to = g:googletranslate_locale
+  if a:0 == 0
+    let from = s:detectLang(a:word)
+    let to = g:googletranslate_locale==?from || ''==from ? 'en' : g:googletranslate_locale
+  elseif a:0 == 1
+    let to = a:1
+  elseif a:0 >= 2
+    let from = a:1
+    let to = a:2
+  endif
+  let from = s:fixLang(from)
+  let to = s:fixLang(to)
   let mode = from . "|" . to
+
   let oldshellredir=&shellredir
   setlocal shellredir=>
   let text = system('curl -s -d "v=1.0&langpair='.mode.'&q='.s:encodeURIComponent(a:word).'" ' . s:endpoint)
@@ -137,12 +165,13 @@ endfunction
 
 function! GoogleTranslateRange(...) range
   " Concatenate input string.
-  let curline = a:firstline
   let strline = ''
 
   if a:0 >= 3
     let strline = a:3
   else
+    " TODO: get the (inline) select words.
+    let curline = a:firstline
     while curline <= a:lastline
       let tmpline = substitute(getline(curline), '^\s\+\|\s\+$', '', 'g')
       if tmpline=~ '\m^\a' && strline =~ '\m\a$'
@@ -154,27 +183,25 @@ function! GoogleTranslateRange(...) range
     endwhile
   endif
 
-  let from = ''
-  let to = g:googletranslate_locale
+  " Do translate.
   if a:0 == 0
-    let from = s:detectLang(strline)
-    let to = g:googletranslate_locale==?from || ''==from ? 'en' : g:googletranslate_locale
+    let jstr = GoogleTranslate(strline)
   elseif a:0 == 1
-    let to = a:1
+    let jstr = GoogleTranslate(strline, a:1)
   elseif a:0 >= 2
-    let from = a:1
-    let to = a:2
+    let jstr = GoogleTranslate(strline, a:1, a:2)
   endif
 
-  " Do translate.
-  let jstr = GoogleTranslate(strline, from, to)
-  if len(jstr) == 0
+  call <SID>outputTranslate(jstr)
+endfunction
+function! s:outputTranslate(jstr)
+  if len(a:jstr) == 0
     return
   endif
 
   " Echo
   if index(g:googletranslate_options, 'echo') != -1
-    echo jstr
+    echo a:jstr
   endif
   " Put to buffer.
   if index(g:googletranslate_options, 'buffer') != -1
@@ -193,18 +220,91 @@ function! GoogleTranslateRange(...) range
     setlocal buftype=nofile bufhidden=hide noswapfile wrap ft=
     " Append translated string.
     if line('$') == 1 && getline('$').'X' ==# 'X'
-      call setline(1, jstr)
+      call setline(1, a:jstr)
     else
       call append(line('$'), '--------')
-      call append(line('$'), jstr)
+      call append(line('$'), a:jstr)
     endif
     normal! Gzt
   endif
   " Put to unnamed register.
   if index(g:googletranslate_options, 'register') != -1
-    let @" = jstr
+    let @" = a:jstr
   endif
 endfunction
 
+function! s:TranslateVisualText()
+    let startline = line('v')
+    let startcol = col('v')
+    let endline = line('.')
+    let endcol = col('.')
+    let mode = mode()
+    if mode==#'n' || (mode==#'v' && endline==startline && endcol==startcol)
+      let str = getline('.') " Not selection range.
+    elseif mode==#'V'
+      if startline==endline
+        let str = substitute(getline(startline), '\s\{2,}', ' ', 'g')
+      else
+        let str = substitute(join(getline(startline, endline), ' '), '\s\{2,}', ' ', 'g')
+      endif
+    elseif mode==#'v'
+      if endline>startline || (endline==startline && endcol>startcol)
+        let [startline, startcol, endline, endcol] = [startline, startcol, endline, endcol]
+      else " if endline<startline || (endline==startline && endcol<startcol)
+        " reversed selection range.
+        let [startline, startcol, endline, endcol] = [endline, endcol, startline, startcol]
+      endif
+      let lines = getline(startline, endline)
+      let lines[0] = strpart(lines[0], startcol-1)
+      let lines[-1] = strpart(lines[-1], 0, startline==endline ? endcol-startcol : endcol-1)
+      let str = substitute(join(lines, ' '), '\s\{2,}', ' ', 'g')
+    else
+      let str = ''
+      return ''
+    endif
+    let jstr = GoogleTranslate(str)
+    call <SID>outputTranslate(jstr)
+    return ''
+endfunction
+
+function! GoogleTranslateBallooneval(flag)
+  if a:flag == "on"
+    let g:googletranslate_balloon = 1
+    echo "Google Translate Balloon is On."
+  elseif a:flag == "off"
+    let g:googletranslate_balloon = 0
+    echo "Google Translate Balloon is Off."
+  endif
+endfunction
+function! GoogleTranslateBalloon()
+  if !g:googletranslate_balloon
+    return ""
+  endif
+  let mode = mode()
+  let str = v:beval_text
+  if mode ==# "n"
+    let orig_pos = getpos(".")
+    call setpos(".", [v:beval_bufnr, v:beval_lnum, v:beval_col])
+    normal! viw"py
+    let str = @p
+    normal! \<Esc>
+    call setpos(".", orig_pos)
+  endif
+  if str==""
+    return ""
+  endif
+  let text = GoogleTranslate(str)
+  let text = iconv(text, &encoding, s:getLocal())
+  let str = iconv(str, &encoding, s:getLocal())
+  return text . "\n-------------------\n" . str
+endfunction
+set ballooneval
+set balloondelay=400
+set balloonexpr=GoogleTranslateBalloon()
+"set balloonevalcode 59
+
 command! -nargs=* -range GoogleTranslate <line1>,<line2>call GoogleTranslateRange(<f-args>)
 command! -nargs=* -range Trans <line1>,<line2>call GoogleTranslateRange(<f-args>)
+command! -nargs=1 GoogleTranslateBalloon call GoogleTranslateBallooneval(<f-args>)
+command! -nargs=1 TransBalloon call GoogleTranslateBallooneval(<f-args>)
+vnoremap  <expr>  <leader>gt    <SID>TranslateVisualText()
