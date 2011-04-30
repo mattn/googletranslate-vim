@@ -6,8 +6,9 @@
 "
 " Author:	Yasuhiro Matsumoto <mattn.jp@gmail.com>
 " Contribute:	hotoo (闲耘™)
+" Contribute:	MURAOKA Taro <koron.kaoriya@gmail.com>
 " Based On:     excitetranslate.vim
-" Last Change:	11-Nov-2010.
+" Last Change:	29-Apr-2011.
 
 if !exists('g:googletranslate_options')
   let g:googletranslate_options = ["register","buffer"]
@@ -64,6 +65,14 @@ function! s:encodeURIComponent(s)
         \ '\=s:char2hex(submatch(0))', 'g')
 endfunction
 
+function! s:quote(s)
+  let q = '"'
+  if &shellxquote == '"'
+    let q = "'"
+  endif
+  return q.a:s.q
+endfunction
+
 function! GoogleTranslate(word, from, to)
   if !executable("curl")
     echohl WarningMsg
@@ -72,9 +81,10 @@ function! GoogleTranslate(word, from, to)
     return
   endif
   let mode = a:from . "|" . a:to
+  let data = 'v=1.0&langpair='.mode.'&q='.s:encodeURIComponent(a:word)
   let oldshellredir=&shellredir
   setlocal shellredir=>
-  let text = system('curl -s -d "v=1.0&langpair='.mode.'&q='.s:encodeURIComponent(a:word).'" ' . s:endpoint)
+  let text = system("curl -s -d ".s:quote(data)." ".s:endpoint)
   let &shellredir=oldshellredir
   let text = iconv(text, "utf-8", &encoding)
   let text = substitute(text, '\\u\(\x\x\x\x\)', '\=s:nr2enc_char("0x".submatch(1))', 'g')
