@@ -298,10 +298,12 @@ function! GoogleTranslateBalloon()
   let str = iconv(str, &encoding, s:getLocal())
   return text . "\n-------------------\n" . str
 endfunction
-set ballooneval
-set balloondelay=400
-set balloonexpr=GoogleTranslateBalloon()
-"set balloonevalcode 59
+if has('balloon_eval')
+  set ballooneval
+  set balloondelay=400
+  set balloonexpr=GoogleTranslateBalloon()
+  "set balloonevalcode 59
+endif
 
 command! -nargs=* -range GoogleTranslate <line1>,<line2>call GoogleTranslateRange(<f-args>)
 command! -nargs=* -range Trans <line1>,<line2>call GoogleTranslateRange(<f-args>)
