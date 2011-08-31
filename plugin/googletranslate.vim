@@ -12,9 +12,6 @@
 if !exists('g:googletranslate_options')
   let g:googletranslate_options = ["register","buffer"]
 endif
-if !exists("g:googletranslate_balloon")
-  let g:googletranslate_balloon = 0
-endif
 
 let s:endpoint = 'http://ajax.googleapis.com/ajax/services/language/translate'
 let s:detectpoint = 'http://ajax.googleapis.com/ajax/services/language/detect'
@@ -268,18 +265,25 @@ function! s:TranslateVisualText()
 endfunction
 
 function! GoogleTranslateBallooneval(flag)
+  if !has('balloon_eval')
+    echo "Not support balloon."
+    return
+  endif
   if a:flag == "on"
-    let g:googletranslate_balloon = 1
+    let s:bak_balloondelay = &balloondelay
+    let s:bak_balloonexpr  = &balloonexpr
+    setl ballooneval
+    setl balloondelay=400
+    setl balloonexpr=GoogleTranslateBalloon()
     echo "Google Translate Balloon is On."
   elseif a:flag == "off"
-    let g:googletranslate_balloon = 0
+    setl noballooneval
+    let &l:balloondelay=s:bak_balloondelay
+    let &l:balloonexpr=s:bak_balloonexpr
     echo "Google Translate Balloon is Off."
   endif
 endfunction
 function! GoogleTranslateBalloon()
-  if !g:googletranslate_balloon
-    return ""
-  endif
   let mode = mode()
   let str = v:beval_text
   if mode ==# "n"
@@ -298,12 +302,6 @@ function! GoogleTranslateBalloon()
   let str = iconv(str, &encoding, s:getLocal())
   return text . "\n-------------------\n" . str
 endfunction
-if has('balloon_eval')
-  set ballooneval
-  set balloondelay=400
-  set balloonexpr=GoogleTranslateBalloon()
-  "set balloonevalcode 59
-endif
 
 command! -nargs=* -range GoogleTranslate <line1>,<line2>call GoogleTranslateRange(<f-args>)
 command! -nargs=* -range Trans <line1>,<line2>call GoogleTranslateRange(<f-args>)
